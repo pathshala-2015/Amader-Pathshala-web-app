@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher — আমাদের পাঠশালা</title>
+
+<script>
+  // Session guard — same pattern as ADMIN(MAIN)/ADMIN(ALL). Not real
+  // security (sessionStorage is editable via devtools) — only stops the
+  // "typed the filename directly" case. Real gate is Firebase Rules.
+  (function(){
+    try{
+      var raw = sessionStorage.getItem('atp_session');
+      if(!raw) throw 0;
+      var sess = JSON.parse(raw);
+      if(sess.role !== 'teacher' || sess.node !== 'teachers') throw 0;
+    }catch(e){
+      window.location.replace('index.html');
+    }
+  })();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1220; --ink-soft:#16213A;
+    --parchment:#F7F3E8; --parchment-deep:#E8DCC0;
+    --gold:#C89B3C; --gold-bright:#E8C468; --bronze:#8B5E3C; --slate:#4A5568;
+    --line: rgba(200,155,60,0.28);
+    --good:#2f7a4d; --bad:#b23b3b; --warn:#c98a2e;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:'Inter',sans-serif; background:var(--parchment); color:var(--ink); }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; } }
+
+  .shell{ display:grid; grid-template-columns:250px 1fr; min-height:100vh; }
+
+  .sidebar{ background:linear-gradient(180deg, var(--ink-soft), var(--ink)); color:var(--parchment); display:flex; flex-direction:column; padding:24px 0; position:sticky; top:0; height:100vh; overflow-y:auto; }
+  .sb-brand{ padding:0 20px 16px; display:flex; align-items:center; gap:11px; border-bottom:1px solid rgba(232,196,104,0.18); margin-bottom:10px; }
+  .sb-brand img{ width:36px; height:36px; border-radius:50%; background:var(--parchment); border:2px solid var(--gold); object-fit:contain; flex-shrink:0; }
+  .sb-brand-text .bn{ font-family:'Noto Sans Bengali',sans-serif; font-weight:700; font-size:13.5px; color:var(--gold-bright); line-height:1.2; }
+  .sb-brand-text .tier{ font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--slate); margin-top:3px; }
+
+  .sb-who{ padding:14px 20px; border-bottom:1px solid rgba(232,196,104,0.12); margin-bottom:6px; }
+  .sb-who .name{ font-family:'Fraunces',serif; font-size:15px; color:var(--parchment); }
+  .sb-who .role{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--slate); margin-top:2px; }
+
+  .sb-nav{ flex:1; display:flex; flex-direction:column; margin-top:6px; }
+  .sb-item{ display:flex; align-items:center; gap:11px; padding:12px 20px; color:rgba(247,243,232,0.68); cursor:pointer; border-left:3px solid transparent; font-size:13px; font-weight:600; transition:all 0.16s ease; user-select:none; }
+  .sb-item:hover{ background:rgba(232,196,104,0.07); color:var(--parchment); }
+  .sb-item.active{ background:rgba(232,196,104,0.12); border-left-color:var(--gold); color:var(--gold-bright); }
+  .sb-item svg{ width:17px; height:17px; flex-shrink:0; }
+  .sb-count{ margin-left:auto; background:rgba(232,196,104,0.18); color:var(--gold-bright); font-size:10.5px; font-weight:700; padding:1px 7px; border-radius:20px; min-width:18px; text-align:center; }
+
+  .sb-logout{ margin:14px 20px 0; padding:10px; border-radius:8px; border:1px solid rgba(232,196,104,0.22); background:transparent; color:var(--slate); font-size:12px; font-weight:600; cursor:pointer; font-family:'Inter'; }
+  .sb-logout:hover{ border-color:var(--bronze); color:var(--parchment); }
+
+  .main{ display:flex; flex-direction:column; min-height:100vh; }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:18px 30px; border-bottom:1px solid var(--line); background:rgba(255,255,255,0.55); flex-wrap:wrap; gap:12px; }
+  .topbar h1{ font-family:'Fraunces',serif; font-weight:600; font-size:21px; margin:0; }
+  .topbar .sub{ font-size:12px; color:var(--slate); margin-top:2px; }
+
+  .content{ padding:26px 30px; flex:1; }
+  .panel-section{ display:none; animation: fadeSection 0.25s ease both; }
+  .panel-section.active{ display:block; }
+  @keyframes fadeSection{ from{opacity:0; transform:translateY(5px);} to{opacity:1; transform:translateY(0);} }
+
+  .fb-status{ display:flex; align-items:center; gap:7px; padding:6px 12px 6px 10px; border-radius:999px; background:rgba(11,18,32,0.85); border:1px solid rgba(232,196,104,0.35); font-size:11px; font-weight:600; color:var(--parchment); }
+  .fb-dot{ width:8px; height:8px; border-radius:50%; background:#9aa0a8; }
+  .fb-status.fb-live .fb-dot{ background:#3ecf6b; animation: fbPulse 2s ease-in-out infinite; }
+  .fb-status.fb-connecting .fb-dot{ background:#e8c468; animation: fbPulseSoft 1.1s ease-in-out infinite; }
+  .fb-status.fb-offline .fb-dot{ background:#e0524d; }
+  @keyframes fbPulse{ 0%,100%{box-shadow:0 0 0 0 rgba(62,207,107,0.5);} 50%{box-shadow:0 0 0 5px rgba(62,207,107,0);} }
+  @keyframes fbPulseSoft{ 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+  .stat-row{ display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
+  .stat-card{ flex:1; min-width:150px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:15px 17px; }
+  .stat-card .stat-value{ font-family:'Fraunces',serif; font-size:25px; font-weight:600; line-height:1.1; }
+  .stat-card .stat-label{ font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--slate); margin-top:4px; }
+  .stat-card.c-good .stat-value{ color:var(--good); }
+  .stat-card.c-bad .stat-value{ color:var(--bad); }
+  .stat-card.c-gold .stat-value{ color:var(--bronze); }
+
+  .panel-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .panel-toolbar input[type=text], .panel-toolbar input[type=search]{ flex:1; min-width:170px; padding:9px 12px; border:1.5px solid var(--line); border-radius:8px; font-family:'Inter'; font-size:13px; background:#fff; }
+  .panel-toolbar input[type=date], .panel-toolbar input[type=time], .panel-toolbar select{ padding:9px 12px; border:1.5px solid var(--line); border-radius:8px; font-family:'Inter'; font-size:13px; background:#fff; }
+  .btn-primary{ background:linear-gradient(160deg,var(--gold-bright),var(--bronze)); color:#241605; border:none; padding:10px 16px; border-radius:8px; font-weight:700; font-size:12.5px; cursor:pointer; white-space:nowrap; }
+  .btn-primary:hover{ filter:brightness(1.05); }
+  .btn-secondary{ background:transparent; border:1.5px solid var(--bronze); color:var(--bronze); padding:8.5px 14px; border-radius:8px; font-weight:600; font-size:12.5px; cursor:pointer; white-space:nowrap; }
+  .btn-link{ background:none; border:none; color:var(--bronze); font-weight:600; font-size:11.5px; cursor:pointer; padding:5px 8px; text-decoration:underline; }
+
+  .panel-card{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:17px 19px; margin-bottom:18px; }
+  .panel-card h3{ font-family:'Fraunces',serif; font-size:15.5px; margin:0 0 4px; }
+
+  .data-table{ width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; font-size:12.5px; }
+  .data-table th{ text-align:left; background:rgba(139,94,60,0.06); color:var(--bronze); font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; padding:9px 11px; border-bottom:1px solid var(--line); }
+  .data-table td{ padding:10px 11px; border-bottom:1px solid rgba(139,94,60,0.1); vertical-align:middle; }
+  .data-table tr:last-child td{ border-bottom:none; }
+  .data-table tr:hover td{ background:rgba(200,155,60,0.04); }
+  .empty-row td{ text-align:center; color:var(--slate); padding:24px; font-style:italic; font-size:12.5px; }
+
+  /* segmented present/absent/late control */
+  .seg{ display:inline-flex; border:1.5px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg-btn{ border:none; background:#fff; padding:7px 12px; font-size:11.5px; font-weight:700; cursor:pointer; color:var(--slate); border-right:1px solid var(--line); font-family:'Inter'; }
+  .seg-btn:last-child{ border-right:none; }
+  .seg-btn.active-present{ background:var(--good); color:#fff; }
+  .seg-btn.active-absent{ background:var(--bad); color:#fff; }
+  .seg-btn.active-late{ background:var(--warn); color:#fff; }
+  .remarkInput{ width:100%; min-width:140px; padding:7px 9px; border:1.5px solid var(--line); border-radius:7px; font-family:'Inter'; font-size:12.5px; background:#fffdf8; }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(11,18,32,0.55); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .modal-overlay.open{ display:flex; }
+  .modal-box{ background:var(--parchment); border-radius:14px; max-width:460px; width:100%; max-height:88vh; overflow-y:auto; padding:24px 24px 20px; box-shadow:0 30px 60px -20px rgba(0,0,0,0.5); }
+  .modal-box.modal-wide{ max-width:640px; }
+  .profile-head{ display:flex; gap:14px; align-items:center; margin-bottom:14px; }
+  .profile-head img{ width:60px; height:60px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); flex-shrink:0; }
+  .profile-fields{ display:grid; grid-template-columns:1fr 1fr; gap:9px 16px; font-size:12.5px; margin-bottom:18px; }
+  .profile-fields .pf-lbl{ font-size:10px; text-transform:uppercase; letter-spacing:0.03em; color:var(--slate); display:block; margin-bottom:1px; }
+  .student-clickable{ cursor:pointer; }
+  .student-clickable:hover{ text-decoration:underline; }
+  img.student-clickable:hover{ outline:2px solid var(--gold); outline-offset:1px; }
+  .tc-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .tc-stats > div{ display:flex; flex-direction:column; align-items:center; text-align:center; }
+  .tc-num{ font-family:'Fraunces',serif; font-size:16.5px; font-weight:600; color:var(--bronze); }
+  .tc-lbl{ font-size:9px; text-transform:uppercase; letter-spacing:0.03em; color:var(--slate); margin-top:1px; }
+  .tc-week{ display:flex; align-items:flex-end; justify-content:space-between; gap:4px; height:40px; padding:0 2px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .tc-wd{ display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; }
+  .tc-wd-bar{ width:100%; max-width:14px; background:linear-gradient(180deg,var(--gold-bright),var(--bronze)); border-radius:3px 3px 0 0; min-height:2px; }
+  .tc-wd span{ font-size:8.5px; color:var(--slate); }
+  .modal-box h3{ font-family:'Fraunces',serif; margin:0 0 4px; font-size:18px; }
+  .modal-box .modal-sub{ font-size:12px; color:var(--slate); margin-bottom:14px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+
+  .toast{ position:fixed; bottom:22px; right:22px; background:var(--ink); color:var(--parchment); padding:12px 18px; border-radius:10px; font-size:12.5px; box-shadow:0 12px 26px -10px rgba(0,0,0,0.5); z-index:60; opacity:0; transform:translateY(8px); transition:all 0.22s ease; pointer-events:none; max-width:320px; }
+  .toast.show{ opacity:1; transform:translateY(0); }
+  .toast.toast-bad{ background:var(--bad); }
+  .toast.toast-good{ background:var(--good); }
+  .muted{ color:var(--slate); font-size:12px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <img src="atp-logo.png" alt="" onerror="this.style.display='none'">
+      <div class="sb-brand-text">
+        <div class="bn">আমাদের পাঠশালা</div>
+        <div class="tier">Teacher Access</div>
+      </div>
+    </div>
+    <div class="sb-who">
+      <div class="name" id="whoName">—</div>
+      <div class="role" id="whoId">—</div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-item active" data-section="students">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Students <span class="sb-count" id="navCountStudents">0</span>
+      </div>
+      <div class="sb-item" data-section="attendance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Take Attendance
+      </div>
+    </nav>
+    <button class="sb-logout" id="btnLogout">Log out</button>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="topbarTitle">Students</h1>
+        <div class="sub" id="topbarSub">Everyone currently enrolled.</div>
+      </div>
+      <div class="fb-status fb-connecting" id="fbStatus"><span class="fb-dot"></span><span id="fbStatusLabel">DB: Connecting…</span></div>
+    </div>
+
+    <div class="content">
+
+      <!-- ============ STUDENTS (view only) ============ -->
+      <section class="panel-section active" id="sec-students">
+        <div class="stat-row">
+          <div class="stat-card"><div class="stat-value" id="statTotalStudents">—</div><div class="stat-label">Total Students</div></div>
+          <div class="stat-card"><div class="stat-value" id="statBatches">—</div><div class="stat-label">Batches</div></div>
+        </div>
+        <div class="panel-toolbar">
+          <input type="text" id="studentSearch" placeholder="Search by name, phone, or batch…">
+        </div>
+        <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th></th><th>Name</th><th>Class</th><th>Batch</th><th>Age</th><th>Gender</th><th>Birth Date</th><th>Guardian</th><th>Guardian Phone</th><th>Joined</th><th>Profile</th></tr></thead>
+          <tbody id="studentsTbody"><tr class="empty-row"><td colspan="11">Loading…</td></tr></tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- ============ ATTENDANCE ============ -->
+      <section class="panel-section" id="sec-attendance">
+        <div class="panel-card">
+          <h3>Take / Edit Attendance</h3>
+          <p class="muted" style="margin-bottom:12px;">Pick a date to mark a new session, or reopen a past date to edit it. Saving records your name, the date, and the time against this class for admin monitoring.</p>
+          <div class="panel-toolbar">
+            <label class="muted" style="margin:0;">Date<br><input type="date" id="attDate"></label>
+            <label class="muted" style="margin:0;">Time<br><input type="time" id="attTime"></label>
+            <label class="muted" style="margin:0;">Batch<br><select id="attBatchFilter"><option value="">All batches</option></select></label>
+            <div style="flex:1;"></div>
+            <button class="btn-secondary" id="btnMarkAllPresent">Mark all Present</button>
+            <button class="btn-primary" id="btnSaveAttendance">Save Attendance</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Batch</th><th>Status</th><th>Remarks</th></tr></thead>
+          <tbody id="attTbody"><tr class="empty-row"><td colspan="4">Loading…</td></tr></tbody>
+        </table>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay"><div class="modal-box" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getDatabase, ref, child, get, onValue, update, push } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
+
+/*
+  SCHEMA (matches ADMIN(MAIN)/ADMIN(ALL) — teachers only ever write here):
+
+    /attendance/{dateKey}/{studentId} : { status:'present'|'absent'|'late', remarks, updatedAt }
+    /attendance/{dateKey}/_meta       : { time, teacherName, teacherPhone, updatedAt }
+      -- _meta is the latest snapshot for that date, read by admin for
+         the "who took this class" column. It's overwritten on every
+         save/edit of that date, so it always reflects the last teacher
+         to touch it, not full history.
+    /attendanceLog/{autoId}           : { date, time, teacherName, teacherPhone,
+                                           presentCount, absentCount, lateCount,
+                                           totalCount, at }
+      -- append-only. One entry per save (new or edit), so admin can see
+         every teacher's attendance activity over time, not just the
+         latest state of each date. This is the "monitoring" trail.
+
+  Students are read-only here from /students (same node ADMIN(MAIN) writes).
+*/
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB4T2gnQ7qq4OfQfcAzj2t8Cc4Vipt0sJQ",
+  authDomain: "master-web-9d6e0.firebaseapp.com",
+  databaseURL: "https://master-web-9d6e0-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "master-web-9d6e0",
+  storageBucket: "master-web-9d6e0.firebasestorage.app",
+  messagingSenderId: "743778047478",
+  appId: "1:743778047478:web:1424126a3fab9c7b87e3d7"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp, firebaseConfig.databaseURL);
+
+// ---------------- connection badge ----------------
+const fbStatusEl = document.getElementById('fbStatus');
+const fbStatusLabel = document.getElementById('fbStatusLabel');
+function setFbStatus(state){
+  fbStatusEl.classList.remove('fb-live','fb-offline','fb-connecting');
+  fbStatusEl.classList.add(`fb-${state}`);
+  fbStatusLabel.textContent = { live:'DB: Live', offline:'DB: Offline', connecting:'DB: Connecting…' }[state];
+}
+let connReceived = false;
+const connFailsafe = setTimeout(()=>{ if(!connReceived) setFbStatus('offline'); }, 8000);
+onValue(ref(db, '.info/connected'), (snap)=>{
+  connReceived = true;
+  clearTimeout(connFailsafe);
+  setFbStatus(snap.val() === true ? 'live' : 'offline');
+});
+
+// ---------------- helpers ----------------
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+}
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+function nowTime(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function cap(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+const PLACEHOLDER_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><rect width="52" height="52" rx="26" fill="#E8DCC0"/><circle cx="26" cy="20" r="9" fill="#8B5E3C"/><path d="M8 46c2-10 10-16 18-16s16 6 18 16" fill="#8B5E3C"/></svg>');
+
+function toast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (kind ? ' toast-'+kind : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=> t.classList.remove('show'), 3200);
+}
+const modalOverlay = document.getElementById('modalOverlay');
+const modalBox = document.getElementById('modalBox');
+function openModal(html, wide){ modalBox.innerHTML = html; modalBox.classList.toggle('modal-wide', !!wide); modalOverlay.classList.add('open'); }
+function closeModal(){ modalOverlay.classList.remove('open'); modalBox.innerHTML = ''; }
+modalOverlay.addEventListener('click', (e)=>{ if(e.target === modalOverlay) closeModal(); });
+
+// ---------------- who's logged in ----------------
+let teacherName = '', teacherPhone = '';
+try{
+  const sess = JSON.parse(sessionStorage.getItem('atp_session'));
+  teacherName = sess.name || 'Teacher';
+  teacherPhone = sess.identifier || '';
+  document.getElementById('whoName').textContent = teacherName;
+  document.getElementById('whoId').textContent = teacherPhone;
+}catch(e){}
+
+document.getElementById('btnLogout').addEventListener('click', ()=>{
+  sessionStorage.removeItem('atp_session');
+  window.location.href = 'index.html';
+});
+
+// ---------------- nav switching ----------------
+const SECTION_META = {
+  students: { title:'Students', sub:'Everyone currently enrolled.' },
+  attendance: { title:'Take Attendance', sub:'Mark present, absent, or late — and add a remark if needed.' }
+};
+document.querySelectorAll('.sb-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    const section = item.dataset.section;
+    document.querySelectorAll('.sb-item').forEach(i=>i.classList.toggle('active', i===item));
+    document.querySelectorAll('.panel-section').forEach(s=>s.classList.toggle('active', s.id === 'sec-'+section));
+    document.getElementById('topbarTitle').textContent = SECTION_META[section].title;
+    document.getElementById('topbarSub').textContent = SECTION_META[section].sub;
+  });
+});
+
+// ================================================================
+// STUDENTS (read-only)
+// ================================================================
+let studentsCache = {};
+onValue(ref(db, 'students'), (snap)=>{
+  studentsCache = snap.val() || {};
+  renderStudents();
+  populateBatchFilter();
+  renderAttendanceList();
+});
+
+function renderStudents(){
+  const tbody = document.getElementById('studentsTbody');
+  const q = (document.getElementById('studentSearch').value || '').toLowerCase();
+  const entries = Object.entries(studentsCache).filter(([id, s])=>{
+    if(!q) return true;
+    return (s.name||'').toLowerCase().includes(q) || (s.batch||'').toLowerCase().includes(q) || (s.guardianPhone||'').includes(q);
+  });
+
+  document.getElementById('statTotalStudents').textContent = Object.keys(studentsCache).length;
+  document.getElementById('navCountStudents').textContent = Object.keys(studentsCache).length;
+  document.getElementById('statBatches').textContent = new Set(Object.values(studentsCache).map(s=>s.batch).filter(Boolean)).size;
+
+  if(entries.length === 0){
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="11">No students match yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = entries.map(([id, s])=>`
+    <tr>
+      <td><img src="${s.photoUrl || PLACEHOLDER_AVATAR}" class="student-clickable" data-view-profile="${id}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;vertical-align:middle;"></td>
+      <td><span class="student-clickable" data-view-profile="${id}">${escapeHtml(s.name)}</span></td>
+      <td>${escapeHtml(s.className||'—')}</td>
+      <td>${escapeHtml(s.batch||'—')}</td>
+      <td>${escapeHtml(s.age||'—')}</td>
+      <td>${escapeHtml(s.gender||'—')}</td>
+      <td>${fmtDate(s.birthDate)}</td>
+      <td>${escapeHtml(s.guardianName||'—')}</td>
+      <td>${escapeHtml(s.guardianPhone||'—')}</td>
+      <td>${fmtDate(s.joinDate)}</td>
+      <td><button class="btn-link" data-view-profile="${id}">View profile</button></td>
+    </tr>
+  `).join('');
+}
+document.getElementById('studentSearch').addEventListener('input', renderStudents);
+document.getElementById('studentsTbody').addEventListener('click', (e)=>{
+  const viewId = e.target.dataset.viewProfile;
+  if(viewId) openStudentProfile(viewId);
+});
+
+const WEEKDAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+async function openStudentProfile(studentId){
+  const s = studentsCache[studentId];
+  if(!s) return;
+  openModal(`
+    <div class="profile-head">
+      <img src="${s.photoUrl || PLACEHOLDER_AVATAR}" alt="">
+      <div>
+        <h3 style="margin:0;">${escapeHtml(s.name)}</h3>
+        <div class="muted">${escapeHtml(s.className||'—')} · Batch ${escapeHtml(s.batch||'—')}</div>
+      </div>
+    </div>
+    <div class="profile-fields">
+      <div><span class="pf-lbl">Age</span>${escapeHtml(s.age||'—')}</div>
+      <div><span class="pf-lbl">Gender</span>${escapeHtml(s.gender||'—')}</div>
+      <div><span class="pf-lbl">Birth Date</span>${fmtDate(s.birthDate)}</div>
+      <div><span class="pf-lbl">Joined</span>${fmtDate(s.joinDate)}</div>
+      <div><span class="pf-lbl">Guardian</span>${escapeHtml(s.guardianName||'—')}</div>
+      <div><span class="pf-lbl">Guardian Phone</span>${escapeHtml(s.guardianPhone||'—')}</div>
+    </div>
+    <h3 style="font-size:14.5px; margin:0 0 10px;">Attendance Performance</h3>
+    <div id="profileAttStats" class="muted">Loading…</div>
+    <div class="modal-actions"><button class="btn-secondary" id="mClose">Close</button></div>
+  `, true);
+  document.getElementById('mClose').onclick = closeModal;
+
+  try{
+    const snap = await get(ref(db, 'attendance'));
+    const all = snap.exists() ? snap.val() : {};
+    const rows = Object.entries(all)
+      .filter(([date, rec]) => rec && Object.prototype.hasOwnProperty.call(rec, studentId))
+      .sort((a,b)=> b[0].localeCompare(a[0]));
+    const box = document.getElementById('profileAttStats');
+    if(!box) return; // modal was closed already
+    if(rows.length === 0){ box.innerHTML = 'No attendance recorded for this student yet.'; return; }
+
+    const presentCount = rows.filter(([,rec])=>rec[studentId].status === 'present').length;
+    const absentCount = rows.filter(([,rec])=>rec[studentId].status === 'absent').length;
+    const lateCount = rows.filter(([,rec])=>rec[studentId].status === 'late').length;
+    const pct = Math.round((presentCount/rows.length)*100);
+
+    const weekdayPresent = [0,0,0,0,0,0,0];
+    const weekdayTotal = [0,0,0,0,0,0,0];
+    rows.forEach(([date, rec])=>{
+      const wd = new Date(date).getDay();
+      weekdayTotal[wd]++;
+      if(rec[studentId].status === 'present') weekdayPresent[wd]++;
+    });
+
+    box.innerHTML = `
+      <div class="tc-stats" style="margin-bottom:10px;">
+        <div><span class="tc-num">${rows.length}</span><span class="tc-lbl">Days Recorded</span></div>
+        <div><span class="tc-num" style="color:var(--good);">${presentCount}</span><span class="tc-lbl">Present</span></div>
+        <div><span class="tc-num" style="color:var(--bad);">${absentCount}</span><span class="tc-lbl">Absent</span></div>
+        <div><span class="tc-num" style="color:var(--warn);">${lateCount}</span><span class="tc-lbl">Late</span></div>
+      </div>
+      <div class="muted" style="margin-bottom:10px;">${pct}% overall attendance rate</div>
+      <div class="tc-week" style="margin-bottom:16px;">
+        ${WEEKDAY_LABELS.map((wd,i)=>{
+          const h = weekdayTotal[i] ? Math.max(2, Math.round((weekdayPresent[i]/weekdayTotal[i])*28)) : 2;
+          return `<div class="tc-wd"><div class="tc-wd-bar" style="height:${h}px;" title="${wd}: ${weekdayPresent[i]}/${weekdayTotal[i]} present"></div><span>${wd}</span></div>`;
+        }).join('')}
+      </div>
+      <h3 style="font-size:13.5px; margin:0 0 8px;">Recent Attendance</h3>
+      <div style="max-height:220px; overflow-y:auto;">
+        ${rows.slice(0, 60).map(([date, rec])=>{
+          const r = rec[studentId];
+          const color = r.status==='present' ? 'var(--good)' : r.status==='late' ? 'var(--warn)' : 'var(--bad)';
+          const timeBit = rec._meta && rec._meta.time ? ' · ' + escapeHtml(rec._meta.time) : '';
+          return `<div style="display:flex; justify-content:space-between; gap:10px; padding:4px 0; font-size:12.5px; border-bottom:1px solid rgba(139,94,60,0.1);">
+            <span>${date}${timeBit}</span>
+            <span style="color:${color}; text-align:right;">${cap(r.status)}${r.remarks ? ' — '+escapeHtml(r.remarks) : ''}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+  }catch(err){
+    console.error(err);
+    const box = document.getElementById('profileAttStats');
+    if(box) box.textContent = 'Could not load attendance history.';
+  }
+}
+
+// ================================================================
+// ATTENDANCE (present / absent / late + remarks + time)
+// ================================================================
+let attState = {}; // { studentId: { status, remarks } }
+const dateInput = document.getElementById('attDate');
+const timeInput = document.getElementById('attTime');
+const batchFilterEl = document.getElementById('attBatchFilter');
+const attTbody = document.getElementById('attTbody');
+
+dateInput.value = todayKey();
+timeInput.value = nowTime();
+
+function populateBatchFilter(){
+  const current = batchFilterEl.value;
+  const batches = Array.from(new Set(Object.values(studentsCache).map(s=>s.batch).filter(Boolean))).sort();
+  batchFilterEl.innerHTML = '<option value="">All batches</option>' + batches.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+  batchFilterEl.value = batches.includes(current) ? current : '';
+}
+batchFilterEl.addEventListener('change', renderAttendanceList);
+
+function renderAttendanceList(){
+  const filterVal = batchFilterEl.value;
+  const ids = Object.keys(studentsCache).filter(id => !filterVal || (studentsCache[id].batch||'') === filterVal);
+  if(ids.length === 0){
+    attTbody.innerHTML = '<tr class="empty-row"><td colspan="4">No students to show.</td></tr>';
+    return;
+  }
+  attTbody.innerHTML = ids.map(id=>{
+    const s = studentsCache[id];
+    const st = attState[id] || { status:'present', remarks:'' };
+    return `<tr data-row="${id}">
+      <td>${escapeHtml(s.name)}</td>
+      <td>${escapeHtml(s.batch||'—')}</td>
+      <td>
+        <div class="seg">
+          <button type="button" class="seg-btn ${st.status==='present'?'active-present':''}" data-status="present">Present</button>
+          <button type="button" class="seg-btn ${st.status==='absent'?'active-absent':''}" data-status="absent">Absent</button>
+          <button type="button" class="seg-btn ${st.status==='late'?'active-late':''}" data-status="late">Late</button>
+        </div>
+      </td>
+      <td><input type="text" class="remarkInput" data-remark="${id}" placeholder="Optional remark…" value="${escapeHtml(st.remarks||'')}"></td>
+    </tr>`;
+  }).join('');
+}
+
+attTbody.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.seg-btn');
+  if(!btn) return;
+  const row = btn.closest('tr');
+  const id = row.dataset.row;
+  const status = btn.dataset.status;
+  attState[id] = attState[id] || { status:'present', remarks:'' };
+  attState[id].status = status;
+  row.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active-present','active-absent','active-late'));
+  btn.classList.add('active-'+status);
+});
+attTbody.addEventListener('input', (e)=>{
+  const inp = e.target.closest('.remarkInput');
+  if(!inp) return;
+  const id = inp.dataset.remark;
+  attState[id] = attState[id] || { status:'present', remarks:'' };
+  attState[id].remarks = inp.value;
+});
+
+document.getElementById('btnMarkAllPresent').addEventListener('click', ()=>{
+  Object.keys(studentsCache).forEach(id=>{ attState[id] = { status:'present', remarks: (attState[id]&&attState[id].remarks) || '' }; });
+  renderAttendanceList();
+});
+
+async function loadAttendanceForDate(date){
+  attState = {};
+  try{
+    const snap = await get(ref(db, 'attendance/'+date));
+    const data = snap.exists() ? snap.val() : {};
+    Object.keys(data).forEach(k=>{
+      if(k === '_meta') return;
+      attState[k] = { status: data[k].status || 'present', remarks: data[k].remarks || '' };
+    });
+    timeInput.value = (data._meta && data._meta.time) ? data._meta.time : nowTime();
+  }catch(e){
+    console.error(e);
+    toast('Could not load that date', 'bad');
+  }
+  renderAttendanceList();
+}
+dateInput.addEventListener('change', ()=> loadAttendanceForDate(dateInput.value || todayKey()));
+loadAttendanceForDate(dateInput.value);
+
+document.getElementById('btnSaveAttendance').addEventListener('click', async ()=>{
+  const date = dateInput.value || todayKey();
+  const time = timeInput.value || nowTime();
+  const ids = Object.keys(studentsCache);
+  if(ids.length === 0){ toast('No students to mark yet', 'bad'); return; }
+
+  const updates = {};
+  let present=0, absent=0, late=0;
+  ids.forEach(id=>{
+    const st = attState[id] || { status:'present', remarks:'' };
+    updates[`attendance/${date}/${id}`] = { status: st.status, remarks: st.remarks || '', updatedAt: Date.now() };
+    if(st.status === 'present') present++;
+    else if(st.status === 'absent') absent++;
+    else if(st.status === 'late') late++;
+  });
+  updates[`attendance/${date}/_meta`] = { time, teacherName, teacherPhone, updatedAt: Date.now() };
+
+  const btn = document.getElementById('btnSaveAttendance');
+  btn.disabled = true;
+  try{
+    await update(ref(db), updates);
+    await push(ref(db, 'attendanceLog'), {
+      date, time, teacherName, teacherPhone,
+      presentCount: present, absentCount: absent, lateCount: late, totalCount: ids.length,
+      at: Date.now()
+    });
+    toast('Attendance saved for '+date, 'good');
+  }catch(err){
+    console.error(err);
+    toast('Could not save attendance', 'bad');
+  }finally{
+    btn.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>
