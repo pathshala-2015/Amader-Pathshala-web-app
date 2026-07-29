@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Membership Application — আমাদের পাঠশালা</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B1220; --ink-soft:#16213A;
+    --parchment:#F7F3E8; --parchment-deep:#E8DCC0;
+    --gold:#C89B3C; --gold-bright:#E8C468; --bronze:#8B5E3C; --slate:#4A5568;
+    --line: rgba(200,155,60,0.28);
+    --good:#2f7a4d; --bad:#b23b3b; --warn:#c98a2e;
+  }
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; overflow-x:hidden; }
+  body{ margin:0; font-family:'Inter',sans-serif; background:var(--parchment); color:var(--ink); min-height:100vh; overflow-x:hidden; }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:0.001ms !important; transition-duration:0.001ms !important; } }
+
+  /* ---------- animated backdrop ---------- */
+  .backdrop{ position:fixed; inset:0; z-index:0; overflow:hidden; background:linear-gradient(180deg,var(--ink-soft),var(--ink) 55%); }
+  .blob{ position:absolute; border-radius:50%; filter:blur(60px); opacity:0.35; }
+  .blob-1{ width:380px; height:380px; background:var(--gold-bright); top:-120px; left:-100px; animation: floatA 16s ease-in-out infinite; }
+  .blob-2{ width:320px; height:320px; background:var(--bronze); bottom:-100px; right:-80px; animation: floatB 20s ease-in-out infinite; }
+  .blob-3{ width:220px; height:220px; background:#3a5a8c; top:40%; right:8%; animation: floatA 13s ease-in-out infinite reverse; opacity:0.22; }
+  @keyframes floatA{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(30px,40px) scale(1.08); } }
+  @keyframes floatB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-25px,-30px) scale(1.05); } }
+
+  .wrap{ position:relative; z-index:1; max-width:640px; margin:0 auto; padding:38px 20px 60px; }
+
+  /* ---------- header / letterhead ---------- */
+  .letterhead{ display:flex; align-items:center; gap:14px; justify-content:center; margin-bottom:6px; opacity:0; animation: dropIn 0.7s ease forwards; }
+  .letterhead img{ width:52px; height:52px; border-radius:50%; background:var(--parchment); border:2px solid var(--gold); object-fit:contain; }
+  .letterhead h1{ font-family:'Noto Sans Bengali',sans-serif; color:var(--gold-bright); font-size:22px; margin:0; font-weight:700; }
+  .letterhead .en{ color:rgba(247,243,232,0.6); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; margin-top:2px; }
+  @keyframes dropIn{ from{ opacity:0; transform:translateY(-14px); } to{ opacity:1; transform:translateY(0); } }
+
+  .hero-title{ text-align:center; color:var(--parchment); font-family:'Fraunces',serif; font-size:28px; margin:18px 0 6px; opacity:0; animation: dropIn 0.7s ease 0.12s forwards; }
+  .hero-sub{ text-align:center; color:rgba(247,243,232,0.6); font-size:13px; margin-bottom:30px; opacity:0; animation: dropIn 0.7s ease 0.22s forwards; }
+
+  /* ---------- stepper ---------- */
+  .stepper{ display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:26px; opacity:0; animation: dropIn 0.7s ease 0.3s forwards; }
+  .step-dot{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; background:rgba(247,243,232,0.08); color:rgba(247,243,232,0.5); border:1.5px solid rgba(232,196,104,0.25); transition:all 0.35s ease; flex-shrink:0; }
+  .step-dot.active{ background:linear-gradient(160deg,var(--gold-bright),var(--bronze)); color:#241605; border-color:transparent; transform:scale(1.12); box-shadow:0 0 0 5px rgba(232,196,104,0.15); }
+  .step-dot.done{ background:var(--good); color:#fff; border-color:transparent; }
+  .step-line{ width:30px; height:2px; background:rgba(232,196,104,0.2); position:relative; overflow:hidden; }
+  .step-line .fill{ position:absolute; inset:0; background:var(--good); width:0%; transition:width 0.4s ease; }
+
+  /* ---------- card ---------- */
+  .card{ background:var(--parchment); border-radius:18px; padding:30px 26px 26px; box-shadow:0 30px 70px -25px rgba(0,0,0,0.55); position:relative; overflow:hidden; opacity:0; animation: cardIn 0.6s ease 0.36s forwards; }
+  @keyframes cardIn{ from{ opacity:0; transform:translateY(24px) scale(0.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
+  .card::before{ content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--gold-bright),var(--bronze),var(--gold-bright)); background-size:200% 100%; animation: shimmer 3.5s linear infinite; }
+  @keyframes shimmer{ to{ background-position:200% 0; } }
+
+  .step-panel{ display:none; }
+  .step-panel.active{ display:block; animation: slideIn 0.35s ease; }
+  @keyframes slideIn{ from{ opacity:0; transform:translateX(16px); } to{ opacity:1; transform:translateX(0); } }
+
+  .step-title{ font-family:'Fraunces',serif; font-size:19px; margin:0 0 3px; }
+  .step-note{ font-size:12px; color:var(--slate); margin-bottom:18px; }
+
+  .field{ margin-bottom:16px; position:relative; }
+  .field label{ display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--bronze); margin-bottom:6px; }
+  .field label .req{ color:var(--bad); margin-left:2px; }
+  .field input, .field select, .field textarea{
+    width:100%; padding:11px 13px; border:1.5px solid rgba(139,94,60,0.28); border-radius:9px;
+    font-family:'Inter'; font-size:16px; background:#fffdf8; transition:border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(200,155,60,0.15);
+  }
+  .field textarea{ resize:vertical; min-height:64px; }
+  .field input:disabled, .field textarea:disabled{ background:rgba(139,94,60,0.06); color:var(--slate); }
+  .field.invalid input, .field.invalid select, .field.invalid textarea{ border-color:var(--bad); box-shadow:0 0 0 3px rgba(178,59,59,0.12); }
+  .field-err{ font-size:11px; color:var(--bad); margin-top:4px; display:none; }
+  .field.invalid .field-err{ display:block; }
+
+  .row-2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:480px){ .row-2{ grid-template-columns:1fr; } }
+
+  @media (max-width:560px){
+    .wrap{ padding:26px 14px 44px; }
+    .card{ padding:22px 17px 20px; border-radius:14px; }
+    .letterhead img{ width:42px; height:42px; }
+    .letterhead h1{ font-size:18px; }
+    .hero-title{ font-size:22px; margin:14px 0 5px; }
+    .hero-sub{ font-size:12px; margin-bottom:22px; }
+    .step-dot{ width:26px; height:26px; font-size:11px; }
+    .step-line{ width:16px; }
+    .stepper{ gap:4px; }
+    .step-title{ font-size:17px; }
+    .review-grid{ grid-template-columns:1fr; }
+    .nav-row{ flex-direction:column-reverse; gap:10px; }
+    .nav-row .btn{ width:100%; margin-left:0; padding:13px 20px; }
+    .field label{ font-size:10.5px; }
+    .blob{ filter:blur(40px); }
+    .blob-1{ width:220px; height:220px; }
+    .blob-2{ width:200px; height:200px; }
+    .blob-3{ width:140px; height:140px; }
+  }
+
+  .same-check{ display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--slate); margin:-6px 0 16px; }
+  .same-check input{ width:auto; }
+
+  .photo-drop{ border:2px dashed rgba(139,94,60,0.35); border-radius:12px; padding:20px; text-align:center; cursor:pointer; transition:border-color 0.2s ease, background 0.2s ease; position:relative; }
+  .photo-drop:hover{ border-color:var(--gold); background:rgba(200,155,60,0.05); }
+  .photo-drop img{ width:64px; height:64px; border-radius:50%; object-fit:cover; margin-bottom:8px; border:2px solid var(--gold); }
+  .photo-drop .pd-text{ font-size:12.5px; color:var(--slate); }
+  .photo-drop input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .photo-size-note{ font-size:11px; color:var(--slate); margin-top:6px; text-align:center; }
+
+  .nav-row{ display:flex; justify-content:space-between; gap:10px; margin-top:22px; }
+  .btn{ border:none; border-radius:9px; padding:12px 20px; font-weight:700; font-size:13px; cursor:pointer; font-family:'Inter'; transition:transform 0.15s ease, filter 0.15s ease; }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{ background:linear-gradient(160deg,var(--gold-bright),var(--bronze)); color:#241605; margin-left:auto; }
+  .btn-primary:hover{ filter:brightness(1.06); }
+  .btn-primary:disabled{ opacity:0.55; cursor:not-allowed; filter:none; }
+  .btn-ghost{ background:transparent; color:var(--bronze); border:1.5px solid rgba(139,94,60,0.3); }
+  .btn-ghost:hover{ border-color:var(--bronze); }
+
+  .review-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px 16px; font-size:12.5px; margin-bottom:18px; }
+  .review-grid .rv-lbl{ font-size:10px; text-transform:uppercase; letter-spacing:0.03em; color:var(--slate); display:block; margin-bottom:1px; }
+  .review-photo{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .review-photo img{ width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid var(--gold); }
+
+  .spinner{ width:15px; height:15px; border:2px solid rgba(36,22,5,0.3); border-top-color:#241605; border-radius:50%; display:inline-block; vertical-align:-2px; margin-right:7px; animation: spin 0.7s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* ---------- success screen ---------- */
+  .success-view{ text-align:center; padding:10px 4px 4px; }
+  .check-wrap{ width:84px; height:84px; margin:0 auto 20px; }
+  .check-circle{ stroke-dasharray:245; stroke-dashoffset:245; animation: drawCircle 0.6s ease forwards; }
+  .check-mark{ stroke-dasharray:40; stroke-dashoffset:40; animation: drawCheck 0.35s ease 0.55s forwards; }
+  @keyframes drawCircle{ to{ stroke-dashoffset:0; } }
+  @keyframes drawCheck{ to{ stroke-dashoffset:0; } }
+  .success-view h2{ font-family:'Fraunces',serif; font-size:21px; margin:0 0 12px; }
+  .success-view p{ font-size:13.5px; line-height:1.65; color:var(--slate); max-width:440px; margin:0 auto; }
+  .success-view .ref{ margin-top:18px; font-size:11.5px; color:var(--bronze); font-weight:700; }
+
+  .toast{ position:fixed; bottom:22px; left:50%; transform:translate(-50%,8px); background:var(--ink); color:var(--parchment); padding:12px 18px; border-radius:10px; font-size:12.5px; box-shadow:0 12px 26px -10px rgba(0,0,0,0.5); z-index:60; opacity:0; transition:all 0.22s ease; pointer-events:none; max-width:320px; text-align:center; }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+  .toast.toast-bad{ background:var(--bad); }
+</style>
+</head>
+<body>
+
+<div class="backdrop"><div class="blob blob-1"></div><div class="blob blob-2"></div><div class="blob blob-3"></div></div>
+
+<div class="wrap">
+  <div class="letterhead">
+    <img src="atp-logo.png" alt="" onerror="this.style.display='none'">
+    <div>
+      <h1>আমাদের পাঠশালা</h1>
+      <div class="en">Amader Pathshala</div>
+    </div>
+  </div>
+  <h2 class="hero-title">Membership Application</h2>
+  <p class="hero-sub">Join us — it takes about three minutes.</p>
+
+  <div class="stepper" id="stepper"></div>
+
+  <div class="card">
+
+    <form id="appForm" novalidate>
+
+      <!-- STEP 1 -->
+      <div class="step-panel active" data-step="1">
+        <h3 class="step-title">Personal Details</h3>
+        <p class="step-note">Let's start with the basics.</p>
+        <div class="row-2">
+          <div class="field" data-field="firstName"><label>First Name<span class="req">*</span></label><input id="fFirstName" required><div class="field-err">First name is required.</div></div>
+          <div class="field" data-field="middleName"><label>Middle Name</label><input id="fMiddleName"></div>
+        </div>
+        <div class="field" data-field="lastName"><label>Last Name<span class="req">*</span></label><input id="fLastName" required><div class="field-err">Last name is required.</div></div>
+        <div class="row-2">
+          <div class="field" data-field="dob"><label>Date of Birth<span class="req">*</span></label><input type="date" id="fDob" required><div class="field-err">Date of birth is required.</div></div>
+          <div class="field" data-field="maritalStatus">
+            <label>Marital Status<span class="req">*</span></label>
+            <select id="fMaritalStatus" required>
+              <option value="" disabled selected>Select…</option>
+              <option value="Single">Single</option>
+              <option value="Married">Married</option>
+              <option value="Widowed">Widowed</option>
+              <option value="Divorced">Divorced</option>
+            </select>
+            <div class="field-err">Please select your marital status.</div>
+          </div>
+        </div>
+        <div class="row-2">
+          <div class="field" data-field="fatherName"><label>Father's Name</label><input id="fFatherName"></div>
+          <div class="field" data-field="spouseName"><label>Name of Spouse</label><input id="fSpouseName"></div>
+        </div>
+        <div class="nav-row"><span></span><button type="button" class="btn btn-primary" data-next>Continue</button></div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-panel" data-step="2">
+        <h3 class="step-title">Contact &amp; Address</h3>
+        <p class="step-note">How can we reach you, and where do you live?</p>
+        <div class="field" data-field="residentialAddress"><label>Residential Address<span class="req">*</span></label><textarea id="fResAddress" required></textarea><div class="field-err">Residential address is required.</div></div>
+        <label class="same-check"><input type="checkbox" id="fSameAddress"> Permanent address is the same as residential</label>
+        <div class="field" data-field="permanentAddress"><label>Permanent Address<span class="req">*</span></label><textarea id="fPermAddress" required></textarea><div class="field-err">Permanent address is required.</div></div>
+        <div class="row-2">
+          <div class="field" data-field="phone"><label>Ph No<span class="req">*</span></label><input id="fPhone" placeholder="10-digit number" required><div class="field-err">A valid 10-digit phone number is required.</div></div>
+          <div class="field" data-field="mail"><label>Mail ID<span class="req">*</span></label><input type="email" id="fMail" placeholder="name@example.com" required><div class="field-err">A valid email address is required.</div></div>
+        </div>
+        <div class="nav-row"><button type="button" class="btn btn-ghost" data-back>Back</button><button type="button" class="btn btn-primary" data-next>Continue</button></div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-panel" data-step="3">
+        <h3 class="step-title">Background &amp; Photo</h3>
+        <p class="step-note">A little more about you.</p>
+        <div class="field" data-field="eduQualification"><label>Educational Qualification</label><input id="fEduQual"></div>
+        <div class="row-2">
+          <div class="field" data-field="profession"><label>Profession<span class="req">*</span></label><input id="fProfession" required><div class="field-err">Profession is required.</div></div>
+          <div class="field" data-field="hobby"><label>Hobby</label><input id="fHobby"></div>
+        </div>
+        <div class="field">
+          <label>Photo <span style="text-transform:none; font-weight:400; color:var(--slate);">(optional, kept between 20–60 KB)</span></label>
+          <div class="photo-drop" id="photoDrop">
+            <img id="photoPreview" style="display:none;">
+            <div class="pd-text" id="photoDropText">Click to choose a photo</div>
+            <input type="file" id="fPhoto" accept="image/*">
+          </div>
+          <div class="photo-size-note" id="photoSizeNote"></div>
+        </div>
+        <div class="nav-row"><button type="button" class="btn btn-ghost" data-back>Back</button><button type="button" class="btn btn-primary" data-next>Review</button></div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-panel" data-step="4">
+        <h3 class="step-title">Review &amp; Submit</h3>
+        <p class="step-note">Please check your details before submitting.</p>
+        <div class="review-photo"><img id="rvPhoto" src=""><div><div id="rvName" style="font-family:'Fraunces',serif; font-size:15px;"></div><div class="muted" id="rvProfession" style="font-size:12px; color:var(--slate);"></div></div></div>
+        <div class="review-grid" id="reviewGrid"></div>
+        <div class="nav-row">
+          <button type="button" class="btn btn-ghost" data-back>Back</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmit">Submit Application</button>
+        </div>
+      </div>
+
+    </form>
+
+    <!-- SUCCESS -->
+    <div class="success-view" id="successView" style="display:none;">
+      <div class="check-wrap">
+        <svg viewBox="0 0 60 60" width="84" height="84">
+          <circle class="check-circle" cx="30" cy="30" r="26" fill="none" stroke="#2f7a4d" stroke-width="3.5" stroke-linecap="round"/>
+          <path class="check-mark" d="M18 31l8 8 16-17" fill="none" stroke="#2f7a4d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>Application Received</h2>
+      <p>Thank you for applying to Amader Pathshala. Once we've verified your details, we'll let you know by email whether your membership has been accepted or declined, within 48 hours.</p>
+      <div class="ref" id="refId"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getDatabase, ref, push, set, get, child, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-database.js";
+
+/*
+  Writes to /applications/{autoId}, the exact node ADMIN(MAIN)'s "New
+  Applications" review screen already reads. Field names mirror
+  /members/{key} 1:1 (firstName, middleName, lastName, dob, fatherName,
+  maritalStatus, spouseName, residentialAddress, permanentAddress,
+  sameAddress, phone, mail, eduQualification, profession, hobby,
+  photoUrl) plus name (composed, for the admin table), status:'pending',
+  appliedAt (timestamp). This is deliberate — so ADMIN(MAIN)'s Accept
+  flow can copy an application straight into a full member record
+  instead of only the name/phone/password it currently keeps.
+*/
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB4T2gnQ7qq4OfQfcAzj2t8Cc4Vipt0sJQ",
+  authDomain: "master-web-9d6e0.firebaseapp.com",
+  databaseURL: "https://master-web-9d6e0-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "master-web-9d6e0",
+  storageBucket: "master-web-9d6e0.firebasestorage.app",
+  messagingSenderId: "743778047478",
+  appId: "1:743778047478:web:1424126a3fab9c7b87e3d7"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getDatabase(firebaseApp, firebaseConfig.databaseURL);
+
+function toast(msg, kind){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (kind ? ' toast-'+kind : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=> t.classList.remove('show'), 3400);
+}
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d = new Date(ts);
+  if(isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+}
+function normalizePhone(raw){ return String(raw||'').replace(/\D/g,'').slice(-10); }
+
+// Mirrors the login page's normalizeIdentifier exactly — a key lookup
+// here has to match however that account actually logs in (phone digits,
+// or an email with dots/illegal chars swapped for commas).
+function normalizeIdentifier(raw){
+  raw = (raw || '').trim();
+  if(raw.includes('@')) return raw.toLowerCase().replace(/[.#$\[\]]/g, ',');
+  return raw.replace(/\D/g, '').slice(-10);
+}
+
+// The login page's HARDCODED_MAIN_ADMIN block bypasses Firebase entirely
+// for this one identifier — nothing in adminsMain reflects it, so a DB
+// check alone would let a new applicant claim the owner's own login.
+const RESERVED_PHONES = ['9733145787'];
+
+// Checks a phone/mail pair against everywhere an identifier could already
+// be taken: earlier applications (any status — a deleted one is the only
+// way to free a number back up), and every existing login (members,
+// teachers, and both admin tiers). Point-reads and an indexed query only
+// — never a full-table dump — so this doesn't hand every member's and
+// teacher's record (plaintext passwords included) to whoever loads this
+// public form. Returns { phone: reason|null, mail: reason|null }.
+async function checkIdentifierConflicts(phone, mail){
+  const phoneKey = normalizeIdentifier(phone);
+  const mailKey = mail ? normalizeIdentifier(mail) : '';
+  const takenPhoneMsg = 'This phone number is already in use. Please try a different phone number.';
+  const takenMailMsg = 'This email address is already in use. Please try a different email address.';
+
+  const phoneChecks = phoneKey ? [
+    get(query(ref(db, 'applications'), orderByChild('phone'), equalTo(phoneKey)))
+      .then(s => s.exists() ? takenPhoneMsg : null),
+    get(child(ref(db), `teachers/${phoneKey}`)).then(s => s.exists() ? takenPhoneMsg : null),
+    get(child(ref(db), `members/${phoneKey}`)).then(s => s.exists() ? takenPhoneMsg : null),
+    get(child(ref(db), `adminsAll/${phoneKey}`)).then(s => s.exists() ? takenPhoneMsg : null),
+    get(child(ref(db), `adminsMain/${phoneKey}`)).then(s => s.exists() ? takenPhoneMsg : null)
+  ] : [];
+
+  const mailChecks = mailKey ? [
+    get(child(ref(db), `members/${mailKey}`)).then(s => s.exists() ? takenMailMsg : null),
+    get(child(ref(db), `adminsAll/${mailKey}`)).then(s => s.exists() ? takenMailMsg : null),
+    get(child(ref(db), `adminsMain/${mailKey}`)).then(s => s.exists() ? takenMailMsg : null)
+  ] : [];
+
+  const [phoneResults, mailResults] = await Promise.all([
+    Promise.all(phoneChecks),
+    Promise.all(mailChecks)
+  ]);
+
+  return {
+    phone: RESERVED_PHONES.includes(phoneKey) ? takenPhoneMsg : (phoneResults.find(Boolean) || null),
+    mail: mailResults.find(Boolean) || null
+  };
+}
+
+// One toast covering whichever of phone/mail (or both) are already taken.
+function conflictSummaryMessage(conflicts){
+  if(conflicts.phone && conflicts.mail) return 'Both the phone number and email address are already in use. Please try a different phone number and email address.';
+  return conflicts.phone || conflicts.mail;
+}
+
+const PLACEHOLDER_AVATAR = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><rect width="52" height="52" rx="26" fill="#E8DCC0"/><circle cx="26" cy="20" r="9" fill="#8B5E3C"/><path d="M8 46c2-10 10-16 18-16s16 6 18 16" fill="#8B5E3C"/></svg>');
+
+// Resizes/compresses an image to land inside [minKB, maxKB]. Best-effort.
+async function resizeImageToRange(file, minKB=20, maxKB=60, maxAttempts=25){
+  const img = await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const im = new Image();
+      im.onerror = () => reject(new Error('Could not decode image'));
+      im.onload = () => resolve(im);
+      im.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  let dim = Math.min(400, Math.max(img.width, img.height));
+  let quality = 0.85;
+  let best = null, bestDiff = Infinity;
+  for(let i=0; i<maxAttempts; i++){
+    let width = img.width, height = img.height;
+    if(width >= height && width > dim){ height = Math.round(height * dim/width); width = dim; }
+    else if(height > dim){ width = Math.round(width * dim/height); height = dim; }
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+    const url = canvas.toDataURL('image/jpeg', quality);
+    const kb = ((url.split(',')[1] || '').length * 3/4) / 1024;
+    if(kb >= minKB && kb <= maxKB) return { url, kb: Math.round(kb) };
+    const diff = kb < minKB ? (minKB - kb) : (kb - maxKB);
+    if(diff < bestDiff){ bestDiff = diff; best = { url, kb: Math.round(kb) }; }
+    if(kb > maxKB){
+      if(quality > 0.35) quality = Math.max(0.35, quality - 0.1);
+      else dim = Math.max(60, Math.round(dim * 0.85));
+    } else {
+      if(quality < 0.95) quality = Math.min(0.95, quality + 0.08);
+      else dim = Math.min(600, Math.round(dim * 1.15));
+    }
+  }
+  return best;
+}
+
+// ---------------- stepper ----------------
+const TOTAL_STEPS = 4;
+let currentStep = 1;
+const stepperEl = document.getElementById('stepper');
+function renderStepper(){
+  let html = '';
+  for(let i=1; i<=TOTAL_STEPS; i++){
+    const state = i < currentStep ? 'done' : (i === currentStep ? 'active' : '');
+    html += `<div class="step-dot ${state}">${i < currentStep ? '✓' : i}</div>`;
+    if(i < TOTAL_STEPS){
+      const fillPct = i < currentStep ? 100 : 0;
+      html += `<div class="step-line"><div class="fill" style="width:${fillPct}%"></div></div>`;
+    }
+  }
+  stepperEl.innerHTML = html;
+}
+renderStepper();
+
+function goToStep(n){
+  currentStep = n;
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.toggle('active', Number(p.dataset.step) === n));
+  renderStepper();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ---------------- field validation ----------------
+const REQUIRED_BY_STEP = {
+  1: [
+    ['fFirstName', v => v.trim().length > 0],
+    ['fLastName', v => v.trim().length > 0],
+    ['fDob', v => v.length > 0],
+    ['fMaritalStatus', v => v.length > 0]
+  ],
+  2: [
+    ['fResAddress', v => v.trim().length > 0],
+    ['fPermAddress', v => v.trim().length > 0],
+    ['fPhone', v => normalizePhone(v).length === 10],
+    ['fMail', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())]
+  ],
+  3: [
+    ['fProfession', v => v.trim().length > 0]
+  ]
+};
+function validateStep(step){
+  const rules = REQUIRED_BY_STEP[step] || [];
+  let ok = true;
+  rules.forEach(([id, test])=>{
+    const el = document.getElementById(id);
+    const fieldWrap = el.closest('.field');
+    const valid = test(el.value);
+    fieldWrap.classList.toggle('invalid', !valid);
+    if(!valid) ok = false;
+  });
+  return ok;
+}
+document.querySelectorAll('#appForm input, #appForm select, #appForm textarea').forEach(el=>{
+  el.addEventListener('input', ()=>{
+    const wrap = el.closest('.field');
+    if(!wrap) return;
+    wrap.classList.remove('invalid');
+    const errEl = wrap.querySelector('.field-err');
+    if(errEl && errEl.dataset.defaultMsg) errEl.textContent = errEl.dataset.defaultMsg;
+  });
+});
+
+// Shows/clears a field error with custom text (used for duplicate-identifier
+// conflicts) without permanently overwriting the field's normal "required"
+// message — the original text is captured on first use and restored once
+// the conflict clears.
+function setFieldError(fieldId, message){
+  const el = document.getElementById(fieldId);
+  const wrap = el.closest('.field');
+  const errEl = wrap.querySelector('.field-err');
+  if(!errEl.dataset.defaultMsg) errEl.dataset.defaultMsg = errEl.textContent;
+  if(message){
+    errEl.textContent = message;
+    wrap.classList.add('invalid');
+  } else {
+    errEl.textContent = errEl.dataset.defaultMsg;
+    wrap.classList.remove('invalid');
+  }
+}
+
+document.querySelectorAll('[data-next]').forEach(btn=>{
+  const defaultLabel = btn.textContent;
+  btn.addEventListener('click', async ()=>{
+    if(!validateStep(currentStep)){ toast('Please fill in the required fields', 'bad'); return; }
+    if(currentStep === 2){
+      const phone = normalizePhone(document.getElementById('fPhone').value);
+      const mail = document.getElementById('fMail').value.trim().toLowerCase();
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Checking…';
+      let conflicts;
+      try{
+        conflicts = await checkIdentifierConflicts(phone, mail);
+      }catch(err){
+        console.error(err);
+        btn.disabled = false;
+        btn.textContent = defaultLabel;
+        toast('Could not verify your details — check your connection and try again', 'bad');
+        return;
+      }
+      btn.disabled = false;
+      btn.textContent = defaultLabel;
+      setFieldError('fPhone', conflicts.phone);
+      setFieldError('fMail', conflicts.mail);
+      if(conflicts.phone || conflicts.mail){
+        toast(conflictSummaryMessage(conflicts), 'bad');
+        return;
+      }
+    }
+    if(currentStep === 3) buildReview();
+    goToStep(currentStep + 1);
+  });
+});
+document.querySelectorAll('[data-back]').forEach(btn=>{
+  btn.addEventListener('click', ()=> goToStep(currentStep - 1));
+});
+
+// ---------------- address same-as-residential ----------------
+const resField = document.getElementById('fResAddress');
+const permField = document.getElementById('fPermAddress');
+document.getElementById('fSameAddress').addEventListener('change', (e)=>{
+  permField.disabled = e.target.checked;
+  permField.required = !e.target.checked;
+  if(e.target.checked) permField.value = resField.value;
+});
+resField.addEventListener('input', ()=>{
+  if(document.getElementById('fSameAddress').checked) permField.value = resField.value;
+});
+
+// ---------------- photo ----------------
+let photoDataUrl = '';
+document.getElementById('fPhoto').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const note = document.getElementById('photoSizeNote');
+  note.textContent = 'Compressing…';
+  try{
+    const result = await resizeImageToRange(file, 20, 60);
+    if(!result){ toast('Could not process that image', 'bad'); note.textContent = ''; return; }
+    photoDataUrl = result.url;
+    const preview = document.getElementById('photoPreview');
+    preview.src = photoDataUrl;
+    preview.style.display = 'block';
+    document.getElementById('photoDropText').textContent = 'Click to change photo';
+    const inRange = result.kb >= 20 && result.kb <= 60;
+    note.textContent = `Final size: ~${result.kb} KB${inRange ? '' : ' (closest achievable)'}`;
+    note.style.color = inRange ? '' : 'var(--warn)';
+  }catch(err){ console.error(err); toast('Could not read that image', 'bad'); note.textContent = ''; }
+});
+
+// ---------------- review ----------------
+function collectData(){
+  const firstName = document.getElementById('fFirstName').value.trim();
+  const middleName = document.getElementById('fMiddleName').value.trim();
+  const lastName = document.getElementById('fLastName').value.trim();
+  const sameAddress = document.getElementById('fSameAddress').checked;
+  return {
+    firstName, middleName, lastName,
+    name: [firstName, middleName, lastName].filter(Boolean).join(' '),
+    dob: document.getElementById('fDob').value,
+    fatherName: document.getElementById('fFatherName').value.trim(),
+    maritalStatus: document.getElementById('fMaritalStatus').value,
+    spouseName: document.getElementById('fSpouseName').value.trim(),
+    residentialAddress: resField.value.trim(),
+    permanentAddress: sameAddress ? resField.value.trim() : permField.value.trim(),
+    sameAddress,
+    phone: normalizePhone(document.getElementById('fPhone').value),
+    mail: document.getElementById('fMail').value.trim().toLowerCase(),
+    eduQualification: document.getElementById('fEduQual').value.trim(),
+    profession: document.getElementById('fProfession').value.trim(),
+    hobby: document.getElementById('fHobby').value.trim(),
+    photoUrl: photoDataUrl || ''
+  };
+}
+function buildReview(){
+  const d = collectData();
+  document.getElementById('rvPhoto').src = d.photoUrl || PLACEHOLDER_AVATAR;
+  document.getElementById('rvName').textContent = d.name || '—';
+  document.getElementById('rvProfession').textContent = d.profession || '—';
+  document.getElementById('reviewGrid').innerHTML = `
+    <div><span class="rv-lbl">Date of Birth</span>${fmtDate(d.dob)}</div>
+    <div><span class="rv-lbl">Marital Status</span>${escapeHtml(d.maritalStatus||'—')}</div>
+    <div><span class="rv-lbl">Father's Name</span>${escapeHtml(d.fatherName||'—')}</div>
+    <div><span class="rv-lbl">Spouse</span>${escapeHtml(d.spouseName||'—')}</div>
+    <div><span class="rv-lbl">Ph No</span>${escapeHtml(d.phone||'—')}</div>
+    <div><span class="rv-lbl">Mail ID</span>${escapeHtml(d.mail||'—')}</div>
+    <div><span class="rv-lbl">Residential Address</span>${escapeHtml(d.residentialAddress||'—')}</div>
+    <div><span class="rv-lbl">Permanent Address</span>${escapeHtml(d.permanentAddress||'—')}</div>
+    <div><span class="rv-lbl">Educational Qualification</span>${escapeHtml(d.eduQualification||'—')}</div>
+    <div><span class="rv-lbl">Hobby</span>${escapeHtml(d.hobby||'—')}</div>
+  `;
+}
+
+// ---------------- submit ----------------
+document.getElementById('appForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!validateStep(1) || !validateStep(2) || !validateStep(3)){
+    toast('Please complete all required fields', 'bad');
+    return;
+  }
+  const btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting…';
+  try{
+    const data = collectData();
+    const conflicts = await checkIdentifierConflicts(data.phone, data.mail);
+    if(conflicts.phone || conflicts.mail){
+      setFieldError('fPhone', conflicts.phone);
+      setFieldError('fMail', conflicts.mail);
+      toast(conflictSummaryMessage(conflicts), 'bad');
+      goToStep(2);
+      btn.disabled = false;
+      btn.textContent = 'Submit Application';
+      return;
+    }
+    data.status = 'pending';
+    data.appliedAt = Date.now();
+    const newRef = push(ref(db, 'applications'));
+    await set(newRef, data);
+    document.getElementById('appForm').style.display = 'none';
+    document.getElementById('stepper').style.display = 'none';
+    document.getElementById('successView').style.display = 'block';
+    document.getElementById('refId').textContent = 'Reference No. ' + newRef.key;
+  }catch(err){
+    console.error(err);
+    toast('Could not submit — check your connection and try again', 'bad');
+    btn.disabled = false;
+    btn.textContent = 'Submit Application';
+  }
+});
+</script>
+</body>
+</html>
