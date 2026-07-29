@@ -2002,7 +2002,7 @@ function renderAdmins(){
   }
   tbody.innerHTML = entries.map(([id, a])=>`
     <tr>
-      <td>${escapeHtml(a.name)}</td>
+      <td><button class="btn-link" data-view-admin="${id}" style="font-weight:600;">${escapeHtml(a.name)}</button></td>
       <td>${escapeHtml(id.replace(/,/g,'.'))}</td>
       <td>
         <span class="pw-mask" data-pw-mask="${id}">••••••••</span>
@@ -2019,8 +2019,10 @@ document.getElementById('adminsTbody').addEventListener('click', (e)=>{
   const delId = e.target.dataset.delAdmin;
   const permId = e.target.dataset.permAdmin;
   const pwId = e.target.dataset.pwToggle;
+  const viewId = e.target.dataset.viewAdmin;
   if(delId) deleteAdmin(delId);
   if(permId) jumpToPermissions(permId);
+  if(viewId) openAdminDetailsModal(viewId);
   if(pwId){
     const mask = document.querySelector(`[data-pw-mask="${pwId}"]`);
     const plain = document.querySelector(`[data-pw-plain="${pwId}"]`);
@@ -2036,6 +2038,37 @@ async function deleteAdmin(id){
   if(!confirm(`Remove ${a?.name || 'this admin'}? They\u2019ll no longer be able to log in to ADMIN(ALL).HTML.`)) return;
   try{ await remove(ref(db, 'adminsAll/'+id)); toast('Admin removed', 'good'); }
   catch(err){ console.error(err); toast('Could not delete — check the database connection', 'bad'); }
+}
+
+// Full details view for an existing admin, opened by clicking their name.
+// Login ID is the Firebase key for this record, so it's shown but not
+// editable here — changing it would mean moving the node, not updating it.
+// Name and password are editable and save straight back to adminsAll/{id}.
+function openAdminDetailsModal(id){
+  const a = adminsCache[id];
+  if(!a) return;
+  openModal(`
+    <h3>Admin Details</h3>
+    <div class="modal-sub">Login ID: ${escapeHtml(id.replace(/,/g,'.'))}</div>
+    <label>Name</label><input id="adName" value="${escapeHtml(a.name || '')}">
+    <label>Password</label><input id="adPass" value="${escapeHtml(a.password ?? '')}">
+    <div class="modal-actions">
+      <button class="btn-secondary" id="mCancel">Cancel</button>
+      <button class="btn-primary" id="mSave">Save</button>
+    </div>
+  `);
+  document.getElementById('mCancel').onclick = closeModal;
+  document.getElementById('mSave').onclick = async ()=>{
+    const name = document.getElementById('adName').value.trim();
+    const pass = document.getElementById('adPass').value;
+    if(!name){ toast('Name is required', 'bad'); return; }
+    if(!pass){ toast('Password is required', 'bad'); return; }
+    try{
+      await update(ref(db, 'adminsAll/'+id), { name, password: pass });
+      toast('Admin details updated', 'good');
+      closeModal();
+    }catch(err){ console.error(err); toast('Could not save — check the database connection', 'bad'); }
+  };
 }
 
 document.getElementById('btnAddAdmin').addEventListener('click', ()=>{
@@ -2081,16 +2114,34 @@ function loadPermissionGrid(id){
   const admin = adminsCache[id];
   const perms = Object.assign(defaultPermissions(), admin?.permissions || {});
   document.getElementById('permGridTitle').textContent = 'Permissions — ' + (admin?.name || id);
-  document.getElementById('permGridBody').innerHTML = FEATURE_LIST.map(f=>`
+  document.getElementById('permGridBody').innerHTML = FEATURE_LIST.map(f=>{
+    const view = !!perms[f.key]?.view;
+    const edit = view && !!perms[f.key]?.edit;
+    return `
     <tr>
       <td>${f.label}</td>
-      <td><input type="checkbox" class="permView" data-feature="${f.key}" ${perms[f.key]?.view ? 'checked' : ''} style="width:auto;"></td>
-      <td><input type="checkbox" class="permEdit" data-feature="${f.key}" ${perms[f.key]?.edit ? 'checked' : ''} style="width:auto;"></td>
+      <td><input type="checkbox" class="permView" data-feature="${f.key}" ${view ? 'checked' : ''} style="width:auto;"></td>
+      <td><input type="checkbox" class="permEdit" data-feature="${f.key}" ${edit ? 'checked' : ''} ${view ? '' : 'disabled'} style="width:auto;"></td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
   card.style.display='block';
   hint.style.display='none';
 }
+// If view is turned off, edit is forced off and disabled (can't edit what
+// you can't see). Turning view back on re-enables edit but leaves it
+// unchecked — an admin has to explicitly grant edit again.
+document.getElementById('permGridBody').addEventListener('change', (e)=>{
+  if(!e.target.classList.contains('permView')) return;
+  const feature = e.target.dataset.feature;
+  const editBox = document.querySelector(`.permEdit[data-feature="${feature}"]`);
+  if(!e.target.checked){
+    editBox.checked = false;
+    editBox.disabled = true;
+  } else {
+    editBox.disabled = false;
+  }
+});
 document.getElementById('permAdminSelect').addEventListener('change', (e)=> loadPermissionGrid(e.target.value));
 
 function jumpToPermissions(id){
