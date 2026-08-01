@@ -181,6 +181,36 @@
     .sb-logout{ margin:0 0 0 8px; white-space:nowrap; }
     .two-col{ grid-template-columns:1fr; }
   }
+
+  /* ---------- mobile refinements ---------- */
+  @media (max-width:600px){
+    .content{ padding:16px 14px; }
+    .topbar{ padding:12px 14px; gap:10px; }
+    .topbar h1{ font-size:17px; }
+    .topbar .sub{ font-size:11px; }
+    .stat-row{ gap:8px; }
+    .stat-card{ flex:1 1 calc(50% - 4px); min-width:calc(50% - 4px); padding:11px 12px; }
+    .stat-card .stat-value{ font-size:20px; }
+    .panel-toolbar{ flex-direction:column; align-items:stretch; }
+    .panel-toolbar input[type=text], .panel-toolbar input[type=search], .panel-toolbar select{ width:100%; min-width:0; }
+    .panel-toolbar .btn-primary, .panel-toolbar > .btn-secondary{ width:100%; text-align:center; }
+    .panel-card{ padding:14px 14px; }
+    .data-table{ display:block; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch; }
+    .data-table thead, .data-table tbody{ display:table; width:100%; }
+    .modal-overlay{ padding:10px; }
+    .modal-box{ padding:18px 16px 16px; max-width:100%; }
+    .modal-actions{ flex-wrap:wrap; }
+    .modal-actions button{ flex:1 1 auto; min-width:110px; }
+    .profile-head{ flex-wrap:wrap; text-align:center; justify-content:center; }
+    .profile-fields{ grid-template-columns:1fr; }
+    .teacher-analytics-grid{ grid-template-columns:1fr; }
+    .month-grid{ grid-template-columns:repeat(auto-fill,minmax(60px,1fr)); }
+    .tc-stats{ grid-template-columns:repeat(4,1fr); gap:4px; }
+    .qr-box{ max-width:100%; }
+    .copy-row{ flex-wrap:wrap; }
+    .copy-row .cr-copy{ margin-left:0; width:100%; }
+  }
+
 </style>
 </head>
 <body>
