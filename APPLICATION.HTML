@@ -207,6 +207,8 @@
           <div class="field" data-field="phone"><label>Ph No<span class="req">*</span></label><input id="fPhone" placeholder="10-digit number" required><div class="field-err">A valid 10-digit phone number is required.</div></div>
           <div class="field" data-field="mail"><label>Mail ID<span class="req">*</span></label><input type="email" id="fMail" placeholder="name@example.com" required><div class="field-err">A valid email address is required.</div></div>
         </div>
+        <label class="same-check"><input type="checkbox" id="fSameWhatsapp"> WhatsApp number is the same as Ph No</label>
+        <div class="field" data-field="whatsapp"><label>WhatsApp No<span class="req">*</span></label><input id="fWhatsapp" placeholder="10-digit number" required><div class="field-err">A valid 10-digit WhatsApp number is required.</div></div>
         <div class="nav-row"><button type="button" class="btn btn-ghost" data-back>Back</button><button type="button" class="btn btn-primary" data-next>Continue</button></div>
       </div>
 
@@ -446,7 +448,8 @@ const REQUIRED_BY_STEP = {
     ['fResAddress', v => v.trim().length > 0],
     ['fPermAddress', v => v.trim().length > 0],
     ['fPhone', v => normalizePhone(v).length === 10],
-    ['fMail', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())]
+    ['fMail', v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())],
+    ['fWhatsapp', v => normalizePhone(v).length === 10]
   ],
   3: [
     ['fProfession', v => v.trim().length > 0]
@@ -508,7 +511,7 @@ document.querySelectorAll('[data-next]').forEach(btn=>{
         console.error(err);
         btn.disabled = false;
         btn.textContent = defaultLabel;
-        toast('Could not verify your details — check your connection and try again', 'bad');
+        toast('Could not verify your details: ' + (err && err.message ? err.message : 'unknown error'), 'bad');
         return;
       }
       btn.disabled = false;
@@ -538,6 +541,17 @@ document.getElementById('fSameAddress').addEventListener('change', (e)=>{
 });
 resField.addEventListener('input', ()=>{
   if(document.getElementById('fSameAddress').checked) permField.value = resField.value;
+});
+
+const phoneField = document.getElementById('fPhone');
+const whatsappField = document.getElementById('fWhatsapp');
+document.getElementById('fSameWhatsapp').addEventListener('change', (e)=>{
+  whatsappField.disabled = e.target.checked;
+  whatsappField.required = !e.target.checked;
+  if(e.target.checked) whatsappField.value = phoneField.value;
+});
+phoneField.addEventListener('input', ()=>{
+  if(document.getElementById('fSameWhatsapp').checked) whatsappField.value = phoneField.value;
 });
 
 // ---------------- photo ----------------
@@ -578,6 +592,8 @@ function collectData(){
     permanentAddress: sameAddress ? resField.value.trim() : permField.value.trim(),
     sameAddress,
     phone: normalizePhone(document.getElementById('fPhone').value),
+    whatsapp: document.getElementById('fSameWhatsapp').checked ? normalizePhone(document.getElementById('fPhone').value) : normalizePhone(document.getElementById('fWhatsapp').value),
+    sameWhatsapp: document.getElementById('fSameWhatsapp').checked,
     mail: document.getElementById('fMail').value.trim().toLowerCase(),
     eduQualification: document.getElementById('fEduQual').value.trim(),
     profession: document.getElementById('fProfession').value.trim(),
@@ -596,6 +612,7 @@ function buildReview(){
     <div><span class="rv-lbl">Father's Name</span>${escapeHtml(d.fatherName||'—')}</div>
     <div><span class="rv-lbl">Spouse</span>${escapeHtml(d.spouseName||'—')}</div>
     <div><span class="rv-lbl">Ph No</span>${escapeHtml(d.phone||'—')}</div>
+    <div><span class="rv-lbl">WhatsApp No</span>${escapeHtml(d.whatsapp||'—')}</div>
     <div><span class="rv-lbl">Mail ID</span>${escapeHtml(d.mail||'—')}</div>
     <div><span class="rv-lbl">Residential Address</span>${escapeHtml(d.residentialAddress||'—')}</div>
     <div><span class="rv-lbl">Permanent Address</span>${escapeHtml(d.permanentAddress||'—')}</div>
@@ -636,7 +653,7 @@ document.getElementById('appForm').addEventListener('submit', async (e)=>{
     document.getElementById('refId').textContent = 'Reference No. ' + newRef.key;
   }catch(err){
     console.error(err);
-    toast('Could not submit — check your connection and try again', 'bad');
+    toast('Could not submit: ' + (err && err.message ? err.message : 'unknown error'), 'bad');
     btn.disabled = false;
     btn.textContent = 'Submit Application';
   }
