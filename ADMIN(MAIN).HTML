@@ -188,6 +188,10 @@
       </div>
     </div>
     <nav class="sb-nav" id="sbNav">
+      <div class="sb-item" data-section="profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        My Profile
+      </div>
       <div class="sb-item active" data-section="students">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
         Students <span class="sb-count" id="navCountStudents">0</span>
@@ -332,8 +336,8 @@
           <button class="btn-primary" id="btnAddTeacher">+ Add Teacher</button>
         </div>
         <table class="data-table">
-          <thead><tr><th>Name</th><th>Phone (Teacher ID)</th><th>Password</th><th>Joined</th><th></th></tr></thead>
-          <tbody id="teachersTbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+          <thead><tr><th>Name</th><th>Subject</th><th>Phone (Teacher ID)</th><th>WhatsApp</th><th>Password</th><th>Joined</th><th></th></tr></thead>
+          <tbody id="teachersTbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
         </table>
         <p class="muted" style="margin-top:10px;">Teachers sign in on the Teacher tab of the login page with this phone number and password.</p>
       </section>
@@ -417,6 +421,23 @@
           </div>
         </div>
         <p class="muted" id="permEmptyHint">Add an admin first, then pick them here to set what they can access.</p>
+      </section>
+
+      <!-- ============ MY PROFILE ============ -->
+      <section class="panel-section" id="sec-profile">
+        <div class="panel-card" style="max-width:480px;">
+          <h3 style="margin-top:0;">Account Details</h3>
+          <label>Name</label>
+          <div id="profileName" style="padding:9px 12px; border:1.5px solid var(--line); border-radius:8px; margin-bottom:12px;">—</div>
+          <label>Login ID (email or phone)</label>
+          <div id="profileLoginId" style="padding:9px 12px; border:1.5px solid var(--line); border-radius:8px; margin-bottom:12px;">—</div>
+          <label>Password</label>
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+            <div id="profilePasswordMasked" data-showing="0" style="flex:1; padding:9px 12px; border:1.5px solid var(--line); border-radius:8px;">••••••••</div>
+            <button class="btn-secondary" id="btnShowProfilePassword" type="button">Show</button>
+          </div>
+          <button class="btn-primary" id="btnEditProfile">Edit Profile</button>
+        </div>
       </section>
 
     </div>
@@ -618,6 +639,7 @@ modalOverlay.addEventListener('click', (e)=>{ if(e.target === modalOverlay) clos
 
 // ---------------- nav switching ----------------
 const SECTION_META = {
+  profile: { title:'My Profile', sub:'View and edit your own admin account.' },
   students: { title:'Students', sub:'Everyone currently enrolled, and their attendance record.' },
   attendanceLog: { title:'Attendance Monitor', sub:'Which teacher took attendance, for which date and time — view only.' },
   finance: { title:'Finance', sub:'Income, expenditure, and what\u2019s left in the fund.' },
@@ -1338,11 +1360,33 @@ function openFinanceModal(kind, editId){
   const isIncome = kind === 'income';
   const cache = isIncome ? incomeCache : expenditureCache;
   const e = editId ? (cache[editId] || {}) : {};
+  const incomeType = e.type || 'membership';
+  const memberOptions = Object.entries(membersCache)
+    .sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||''))
+    .map(([id,m])=>`<option value="${escapeHtml(id)}" ${e.memberPhone===id?'selected':''}>${escapeHtml(m.name||id)}</option>`).join('');
   openModal(`
     <h3>${editId ? 'Edit' : 'Add'} ${isIncome ? 'Income' : 'Expenditure'}</h3>
+    ${isIncome ? `
+    <label>Type</label>
+    <select id="fType">
+      <option value="membership" ${incomeType==='membership'?'selected':''}>Membership</option>
+      <option value="donation" ${incomeType==='donation'?'selected':''}>Donation</option>
+      <option value="others" ${incomeType==='others'?'selected':''}>Others</option>
+    </select>
+    <div id="memberFieldWrap" style="${incomeType==='membership'?'':'display:none;'}">
+      <label>Member</label>
+      <select id="fMember"><option value="">Select member…</option>${memberOptions}</select>
+    </div>
     <label>Amount (₹)</label><input type="number" id="fAmount" min="0" value="${e.amount||''}">
-    <label>${isIncome ? 'Source' : 'Category'}</label><input id="fLabel" placeholder="${isIncome ? 'e.g. Member donation' : 'e.g. Books & supplies'}" value="${escapeHtml((isIncome ? e.source : e.category) || '')}">
-    ${isIncome ? `<label>Member Phone or Mail (optional)</label><input id="fMemberPhone" placeholder="Links this entry to a member" value="${escapeHtml(e.memberPhone||'')}">` : ''}
+    <label>Payment Mode</label>
+    <select id="fPayMode">
+      <option value="cash" ${(e.paymentMode||'cash')==='cash'?'selected':''}>Cash</option>
+      <option value="online" ${e.paymentMode==='online'?'selected':''}>Online</option>
+    </select>
+    ` : `
+    <label>Amount (₹)</label><input type="number" id="fAmount" min="0" value="${e.amount||''}">
+    <label>Category</label><input id="fLabel" placeholder="e.g. Books & supplies" value="${escapeHtml(e.category||'')}">
+    `}
     <label>Date</label><input type="date" id="fDate" value="${e.date||todayKey()}">
     <label>Note</label><input id="fNote" placeholder="Optional" value="${escapeHtml(e.note||'')}">
     <div class="modal-actions">
@@ -1351,16 +1395,28 @@ function openFinanceModal(kind, editId){
     </div>
   `);
   document.getElementById('mCancel').onclick = closeModal;
+  if(isIncome){
+    document.getElementById('fType').addEventListener('change', (ev)=>{
+      document.getElementById('memberFieldWrap').style.display = ev.target.value === 'membership' ? '' : 'none';
+    });
+  }
   document.getElementById('mSave').onclick = async ()=>{
     const amount = Number(document.getElementById('fAmount').value);
     if(!amount || amount <= 0){ toast('Enter a valid amount', 'bad'); return; }
     const data = { amount, date: document.getElementById('fDate').value || todayKey(), note: document.getElementById('fNote').value.trim() };
     if(isIncome){
-      data.source = document.getElementById('fLabel').value.trim();
-      // Accepts a phone OR an email now — normalizeIdentifier matches
-      // however that member's own /members/{key} record is keyed.
-      const mp = normalizeIdentifier(document.getElementById('fMemberPhone').value);
-      data.memberPhone = mp || null;
+      const type = document.getElementById('fType').value;
+      data.type = type;
+      data.paymentMode = document.getElementById('fPayMode').value;
+      if(type === 'membership'){
+        const mid = document.getElementById('fMember').value;
+        if(!mid){ toast('Select a member', 'bad'); return; }
+        data.memberPhone = mid;
+        data.source = 'Membership — ' + (membersCache[mid]?.name || mid);
+      } else {
+        data.memberPhone = null;
+        data.source = type === 'donation' ? 'Donation' : 'Others';
+      }
     } else {
       data.category = document.getElementById('fLabel').value.trim();
     }
@@ -1490,6 +1546,10 @@ function openMemberModal(editKey){
     </label>
     <label>Permanent Address</label><textarea id="mmPermAddress" ${m.sameAddress?'disabled':''}>${escapeHtml(m.permanentAddress||'')}</textarea>
     <label>Ph No</label><input id="mmPhone" placeholder="10-digit phone" value="${escapeHtml(m.phone||'')}">
+    <label style="display:flex; align-items:center; gap:6px; text-transform:none; font-weight:400; font-size:12.5px;">
+      <input type="checkbox" id="mmSameWhatsapp" style="width:auto;" ${m.sameWhatsapp?'checked':''}> WhatsApp number same as Ph No
+    </label>
+    <label>WhatsApp No</label><input id="mmWhatsapp" placeholder="10-digit WhatsApp number" value="${escapeHtml(m.whatsapp||'')}" ${m.sameWhatsapp?'disabled':''}>
     <label>Mail ID</label><input type="email" id="mmMail" placeholder="name@example.com" value="${escapeHtml(m.mail||'')}">
     <label>Educational Qualification</label><input id="mmEduQual" value="${escapeHtml(m.eduQualification||'')}">
     <label>Profession</label><input id="mmProfession" value="${escapeHtml(m.profession||'')}">
@@ -1518,6 +1578,16 @@ function openMemberModal(editKey){
   });
   resField.addEventListener('input', ()=>{
     if(document.getElementById('mmSameAddress').checked) permField.value = resField.value;
+  });
+
+  const phoneField = document.getElementById('mmPhone');
+  const whatsappField = document.getElementById('mmWhatsapp');
+  document.getElementById('mmSameWhatsapp').addEventListener('change', (e)=>{
+    whatsappField.disabled = e.target.checked;
+    if(e.target.checked) whatsappField.value = phoneField.value;
+  });
+  phoneField.addEventListener('input', ()=>{
+    if(document.getElementById('mmSameWhatsapp').checked) whatsappField.value = phoneField.value;
   });
 
   document.getElementById('mmDob').addEventListener('change', (e)=>{
@@ -1566,6 +1636,8 @@ function openMemberModal(editKey){
       permanentAddress: sameAddress ? resField.value.trim() : permField.value.trim(),
       sameAddress,
       phone: normalizePhone(phoneRaw),
+      whatsapp: document.getElementById('mmSameWhatsapp').checked ? normalizePhone(phoneRaw) : normalizePhone(document.getElementById('mmWhatsapp').value.trim()),
+      sameWhatsapp: document.getElementById('mmSameWhatsapp').checked,
       mail: mailRaw.toLowerCase(),
       eduQualification: document.getElementById('mmEduQual').value.trim(),
       profession: document.getElementById('mmProfession').value.trim(),
@@ -1603,6 +1675,7 @@ function openMemberProfile(key){
       <div><span class="pf-lbl">Marital Status</span>${escapeHtml(m.maritalStatus||'—')}</div>
       <div><span class="pf-lbl">Spouse</span>${escapeHtml(m.spouseName||'—')}</div>
       <div><span class="pf-lbl">Ph No</span>${escapeHtml(m.phone||'—')}</div>
+      <div><span class="pf-lbl">WhatsApp No</span>${escapeHtml(m.whatsapp||'—')}</div>
       <div><span class="pf-lbl">Mail ID</span>${escapeHtml(m.mail||'—')}</div>
       <div><span class="pf-lbl">Residential Address</span>${escapeHtml(m.residentialAddress||'—')}</div>
       <div><span class="pf-lbl">Permanent Address</span>${escapeHtml(m.permanentAddress||'—')}</div>
@@ -1656,13 +1729,15 @@ function renderTeachers(){
     return (t.name||'').toLowerCase().includes(q) || phone.includes(q);
   });
   if(entries.length === 0){
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No teachers yet — add one to get started.</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">No teachers yet — add one to get started.</td></tr>';
     return;
   }
   tbody.innerHTML = entries.map(([phone, t])=>`
     <tr>
-      <td>${escapeHtml(t.name)}</td>
+      <td><span class="btn-link" data-edit-teacher="${phone}">${escapeHtml(t.name)}</span></td>
+      <td>${escapeHtml(t.subject||'—')}</td>
       <td>${phone}</td>
+      <td>${escapeHtml(t.whatsapp||'—')}</td>
       <td>
         <span class="pw-mask" data-pw-mask="tch-${phone}">••••••••</span>
         <span class="pw-plain" data-pw-plain="tch-${phone}" style="display:none">${escapeHtml(t.password ?? '')}</span>
@@ -1677,8 +1752,10 @@ document.getElementById('teacherSearch').addEventListener('input', renderTeacher
 
 document.getElementById('teachersTbody').addEventListener('click', (e)=>{
   const delPhone = e.target.dataset.delTeacher;
+  const editPhone = e.target.dataset.editTeacher;
   const pwKey = e.target.dataset.pwToggle;
   if(delPhone) deleteTeacher(delPhone);
+  if(editPhone) openTeacherModal(editPhone);
   if(pwKey){
     const mask = document.querySelector(`[data-pw-mask="${pwKey}"]`);
     const plain = document.querySelector(`[data-pw-plain="${pwKey}"]`);
@@ -1695,30 +1772,119 @@ async function deleteTeacher(phone){
   catch(err){ console.error(err); toast('Could not delete — check the database connection', 'bad'); }
 }
 
-document.getElementById('btnAddTeacher').addEventListener('click', ()=>{
+function openTeacherModal(editKey){
+  const t = editKey ? (teachersCache[editKey] || {}) : {};
+  let ttPhotoDataUrl = t.photoUrl || '';
   openModal(`
-    <h3>Add Teacher</h3>
+    <h3>${editKey ? 'Edit Teacher' : 'Add Teacher'}</h3>
     <div class="modal-sub">They\u2019ll sign in on the Teacher tab of the login page with this phone number.</div>
-    <label>Name</label><input id="ttName">
-    <label>Phone</label><input id="ttPhone" placeholder="10-digit login phone">
-    <label>Temporary Password</label><input id="ttPass" value="${randomPassword()}">
-    <label>Join Date</label><input type="date" id="ttJoin" value="${todayKey()}">
+    <label>Photo</label>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+      <img id="ttPhotoPreview" src="${ttPhotoDataUrl || PLACEHOLDER_AVATAR}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:1.5px solid var(--line);">
+      <input type="file" id="ttPhoto" accept="image/*" style="flex:1;">
+    </div>
+    <label>First Name</label><input id="ttFirstName" value="${escapeHtml(t.firstName||'')}">
+    <label>Middle Name</label><input id="ttMiddleName" value="${escapeHtml(t.middleName||'')}">
+    <label>Last Name</label><input id="ttLastName" value="${escapeHtml(t.lastName||'')}">
+    <label>Subject</label><input id="ttSubject" placeholder="e.g. Mathematics" value="${escapeHtml(t.subject||'')}">
+    <label>Date of Birth</label><input type="date" id="ttDob" value="${t.dob||''}">
+    <label>Marital Status</label>
+    <select id="ttMaritalStatus">
+      <option value="" ${!t.maritalStatus?'selected':''}>—</option>
+      <option value="Single" ${t.maritalStatus==='Single'?'selected':''}>Single</option>
+      <option value="Married" ${t.maritalStatus==='Married'?'selected':''}>Married</option>
+      <option value="Widowed" ${t.maritalStatus==='Widowed'?'selected':''}>Widowed</option>
+      <option value="Divorced" ${t.maritalStatus==='Divorced'?'selected':''}>Divorced</option>
+    </select>
+    <label>Name of Spouse</label><input id="ttSpouseName" value="${escapeHtml(t.spouseName||'')}">
+    <label>Residential Address</label><textarea id="ttResAddress">${escapeHtml(t.residentialAddress||'')}</textarea>
+    <label style="display:flex; align-items:center; gap:6px; text-transform:none; font-weight:400; font-size:12.5px;">
+      <input type="checkbox" id="ttSameAddress" style="width:auto;" ${t.sameAddress?'checked':''}> Permanent address same as residential
+    </label>
+    <label>Permanent Address</label><textarea id="ttPermAddress" ${t.sameAddress?'disabled':''}>${escapeHtml(t.permanentAddress||'')}</textarea>
+    <label>Phone</label><input id="ttPhone" placeholder="10-digit login phone" value="${escapeHtml(editKey||'')}">
+    <label style="display:flex; align-items:center; gap:6px; text-transform:none; font-weight:400; font-size:12.5px;">
+      <input type="checkbox" id="ttSameWhatsapp" style="width:auto;" ${t.sameWhatsapp !== false ? 'checked' : ''}> WhatsApp number same as Phone
+    </label>
+    <label>WhatsApp No</label><input id="ttWhatsapp" placeholder="10-digit WhatsApp number" value="${escapeHtml(t.whatsapp||editKey||'')}" ${t.sameWhatsapp !== false ? 'disabled' : ''}>
+    <label>Mail ID</label><input type="email" id="ttMail" placeholder="name@example.com" value="${escapeHtml(t.mail||'')}">
+    <label>Educational Qualification</label><input id="ttEduQual" value="${escapeHtml(t.eduQualification||'')}">
+    <label>Profession</label><input id="ttProfession" value="${escapeHtml(t.profession||'')}">
+    <label>${editKey ? 'Password' : 'Temporary Password'}</label><input id="ttPass" value="${editKey ? escapeHtml(t.password||'') : randomPassword()}">
+    <label>Join Date</label><input type="date" id="ttJoin" value="${t.joinDate || todayKey()}">
     <div class="modal-actions"><button class="btn-secondary" id="mCancel">Cancel</button><button class="btn-primary" id="mSave">Save</button></div>
-  `);
+  `, true);
   document.getElementById('mCancel').onclick = closeModal;
-  document.getElementById('mSave').onclick = async ()=>{
-    const phone = normalizePhone(document.getElementById('ttPhone').value);
-    const name = document.getElementById('ttName').value.trim();
-    const pass = document.getElementById('ttPass').value;
-    if(!phone || phone.length < 10){ toast('Enter a valid 10-digit phone', 'bad'); return; }
-    if(!name){ toast('Name is required', 'bad'); return; }
+
+  const permField = document.getElementById('ttPermAddress');
+  const resField = document.getElementById('ttResAddress');
+  document.getElementById('ttSameAddress').addEventListener('change', (e)=>{
+    permField.disabled = e.target.checked;
+    if(e.target.checked) permField.value = resField.value;
+  });
+  resField.addEventListener('input', ()=>{
+    if(document.getElementById('ttSameAddress').checked) permField.value = resField.value;
+  });
+
+  const ttPhoneField = document.getElementById('ttPhone');
+  const ttWhatsappField = document.getElementById('ttWhatsapp');
+  document.getElementById('ttSameWhatsapp').addEventListener('change', (e)=>{
+    ttWhatsappField.disabled = e.target.checked;
+    if(e.target.checked) ttWhatsappField.value = ttPhoneField.value;
+  });
+  ttPhoneField.addEventListener('input', ()=>{
+    if(document.getElementById('ttSameWhatsapp').checked) ttWhatsappField.value = ttPhoneField.value;
+  });
+
+  document.getElementById('ttPhoto').addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
     try{
-      await set(ref(db, 'teachers/'+phone), { name, password: pass, joinDate: document.getElementById('ttJoin').value });
-      toast('Teacher added — they can log in with this phone + password now', 'good');
+      ttPhotoDataUrl = await resizeImageToDataUrl(file);
+      document.getElementById('ttPhotoPreview').src = ttPhotoDataUrl;
+    }catch(err){ console.error(err); toast('Could not read that image', 'bad'); }
+  });
+
+  document.getElementById('mSave').onclick = async ()=>{
+    const firstName = document.getElementById('ttFirstName').value.trim();
+    const middleName = document.getElementById('ttMiddleName').value.trim();
+    const lastName = document.getElementById('ttLastName').value.trim();
+    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+    const phone = normalizePhone(ttPhoneField.value);
+    const sameWhatsapp = document.getElementById('ttSameWhatsapp').checked;
+    const whatsapp = sameWhatsapp ? phone : normalizePhone(ttWhatsappField.value);
+    const pass = document.getElementById('ttPass').value;
+    const sameAddress = document.getElementById('ttSameAddress').checked;
+    if(!phone || phone.length < 10){ toast('Enter a valid 10-digit phone', 'bad'); return; }
+    if(!fullName){ toast('Name is required', 'bad'); return; }
+    const data = {
+      photoUrl: ttPhotoDataUrl || '',
+      name: fullName,
+      firstName, middleName, lastName,
+      subject: document.getElementById('ttSubject').value.trim(),
+      dob: document.getElementById('ttDob').value,
+      maritalStatus: document.getElementById('ttMaritalStatus').value,
+      spouseName: document.getElementById('ttSpouseName').value.trim(),
+      residentialAddress: resField.value.trim(),
+      permanentAddress: sameAddress ? resField.value.trim() : permField.value.trim(),
+      sameAddress,
+      whatsapp,
+      sameWhatsapp,
+      mail: document.getElementById('ttMail').value.trim().toLowerCase(),
+      eduQualification: document.getElementById('ttEduQual').value.trim(),
+      profession: document.getElementById('ttProfession').value.trim(),
+      password: pass,
+      joinDate: document.getElementById('ttJoin').value
+    };
+    const key = editKey || phone;
+    try{
+      if(editKey){ await update(ref(db, 'teachers/'+key), data); toast('Teacher updated', 'good'); }
+      else{ await set(ref(db, 'teachers/'+key), data); toast('Teacher added — they can log in with this phone + password now', 'good'); }
       closeModal();
     }catch(err){ console.error(err); toast('Could not save — check the database connection', 'bad'); }
   };
-});
+}
+document.getElementById('btnAddTeacher').addEventListener('click', ()=> openTeacherModal(null));
 
 // ================================================================
 // NOTICES
@@ -1890,6 +2056,7 @@ function openAcceptModal(id){
     <label>Last Name</label><input id="accLastName" value="${escapeHtml(app.lastName||'')}">
     <label>Date of Birth</label><input type="date" id="accDob" value="${app.dob||''}">
     <label>Ph No</label><input id="accPhone" value="${escapeHtml(app.phone||'')}">
+    <label>WhatsApp No</label><input id="accWhatsapp" value="${escapeHtml(app.whatsapp || app.phone || '')}">
     <label>Mail ID</label><input type="email" id="accMail" value="${escapeHtml(mail)}">
     <label>Login ID</label>
     <select id="accLoginVia">
@@ -1935,6 +2102,8 @@ function openAcceptModal(id){
       permanentAddress: app.permanentAddress || '',
       sameAddress: !!app.sameAddress,
       phone: normalizePhone(phoneRaw),
+      whatsapp: normalizePhone(document.getElementById('accWhatsapp').value.trim()),
+      sameWhatsapp: !!app.sameWhatsapp,
       mail: mailRaw.toLowerCase(),
       eduQualification: app.eduQualification || '',
       profession: app.profession || '',
@@ -2167,6 +2336,69 @@ document.getElementById('btnSavePermissions').addEventListener('click', async ()
     await update(ref(db, 'adminsAll/'+id+'/permissions'), permissions);
     toast('Permissions saved', 'good');
   }catch(err){ console.error(err); toast('Could not save — check the database connection', 'bad'); }
+});
+
+// ================================================================
+// MY PROFILE
+// Reads/writes the logged-in admin's own /adminsMain/{key} record.
+// NOTE: the '9733145787' super-admin login is hardcoded in index.html
+// and bypasses Firebase entirely — editing that account's profile here
+// updates the DB record, but won't change what index.html accepts as
+// the password for that specific identifier.
+// ================================================================
+let profileKey = null;
+let profileCache = {};
+(function initProfile(){
+  try{
+    const sess = JSON.parse(sessionStorage.getItem('atp_session') || '{}');
+    profileKey = normalizeIdentifier(sess.identifier || '');
+    if(!profileKey) return;
+    onValue(ref(db, 'adminsMain/'+profileKey), (snap)=>{
+      profileCache = snap.val() || { name: sess.name || '', password: '' };
+      renderProfile();
+    });
+  }catch(e){ console.error(e); }
+})();
+function renderProfile(){
+  document.getElementById('profileName').textContent = profileCache.name || '—';
+  document.getElementById('profileLoginId').textContent = profileKey || '—';
+  const el = document.getElementById('profilePasswordMasked');
+  el.dataset.showing = '0';
+  document.getElementById('btnShowProfilePassword').textContent = 'Show';
+  el.textContent = '•'.repeat((profileCache.password || '').length || 8);
+}
+document.getElementById('btnShowProfilePassword').addEventListener('click', (e)=>{
+  const el = document.getElementById('profilePasswordMasked');
+  const showing = el.dataset.showing === '1';
+  el.textContent = showing ? '•'.repeat((profileCache.password||'').length || 8) : (profileCache.password || '(not set)');
+  el.dataset.showing = showing ? '0' : '1';
+  e.target.textContent = showing ? 'Show' : 'Hide';
+});
+document.getElementById('btnEditProfile').addEventListener('click', ()=>{
+  if(!profileKey){ toast('No profile record found for this session', 'bad'); return; }
+  openModal(`
+    <h3>Edit Profile</h3>
+    <label>Name</label><input id="pfName" value="${escapeHtml(profileCache.name||'')}">
+    <label>Login ID</label><input value="${escapeHtml(profileKey||'')}" disabled style="opacity:0.6;">
+    <label>New Password</label><input type="text" id="pfPassword" placeholder="Leave blank to keep current password">
+    <div class="modal-actions">
+      <button class="btn-secondary" id="mCancel">Cancel</button>
+      <button class="btn-primary" id="mSave">Save</button>
+    </div>
+  `);
+  document.getElementById('mCancel').onclick = closeModal;
+  document.getElementById('mSave').onclick = async ()=>{
+    const name = document.getElementById('pfName').value.trim();
+    const pw = document.getElementById('pfPassword').value;
+    if(!name){ toast('Enter a name', 'bad'); return; }
+    const data = { name };
+    if(pw) data.password = pw;
+    try{
+      await update(ref(db, 'adminsMain/'+profileKey), data);
+      toast('Profile updated', 'good');
+      closeModal();
+    }catch(err){ console.error(err); toast('Could not save — check the database connection', 'bad'); }
+  };
 });
 
 </script>
